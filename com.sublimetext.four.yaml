@@ -1,0 +1,103 @@
+---
+app-id: com.sublimetext.four
+command: subl
+
+runtime: org.freedesktop.Sdk
+runtime-version: "20.08"
+sdk: org.freedesktop.Sdk
+
+separate-locales: false
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --device=dri
+  - --socket=x11
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --talk-name=org.gnome.SettingsDaemon
+  - --filesystem=host
+  - --env=PYTHONPATH=/app/utils/lib/python3.8/site-packages
+
+modules:
+  - name: sublime
+    buildsystem: simple
+    sources:
+      - type: script
+        dest-filename: apply_extra
+        commands:
+          - FLATPAK_ID=com.sublimetext.four
+          
+          # Extract upstream package
+          - mkdir -p deb-package export/share
+          - ar p sublime.deb data.tar.xz | tar -xJf - -C deb-package
+          
+          # Install desktop entry and icons
+          - mv deb-package/usr/share/{applications,icons} export/share/
+          - rename sublime_text ${FLATPAK_ID} export/share/applications/*.desktop
+          - rename sublime-text ${FLATPAK_ID} export/share/icons/hicolor/*/apps/*
+          - desktop-file-edit
+            --set-key=Exec --set-value='subl %F'
+            --set-key=Icon --set-value=${FLATPAK_ID}
+            export/share/applications/${FLATPAK_ID}.desktop
+          
+          # Install the app
+          - mv deb-package/opt/sublime_text ./
+          - ln -sr /app/sublime_merge/extra/sublime_merge ./sublime_merge
+          
+          # Cleanup
+          - rm -rf deb-package sublime.deb
+      - type: script
+        dest-filename: subl
+        commands:
+          - PCFILE="Package Control.sublime-package"
+          - PCLOCATION="$HOME/.var/app/com.sublimetext.four/config/sublime-text-4/Installed Packages"
+          - |
+            if ! test -f "$PCLOCATION/$PCFILE"; then
+                mkdir -p "$PCLOCATION"
+                cp "/app/extra/$PCFILE" "$PCLOCATION"
+            fi
+          - export LC_NUMERIC=C
+          - exec /app/extra/sublime_text/sublime_text --fwdargv0 "$0" "$@"
+      - type: extra-data
+        only-arches: ["x86_64"]
+        filename: sublime.deb
+        url: https://download.sublimetext.com/files/sublime-text_build-4113_amd64.deb
+        sha256: 68f23cd7cba6463abab984554c68ce21ceda5a798737b6173d59f67ccd326361
+        size: 16203184
+      - type: extra-data
+        only-arches: ["arm64"]
+        filename: sublime.deb
+        url: https://download.sublimetext.com/files/sublime-text_build-4113_arm64.deb
+        sha256: 43a6f96ec9c192d691b00688649969f54025f4c5ef99618c836559a7cf5328b8
+        size: 15578316
+      - type: extra-data
+        filename: Package Control.sublime-package
+        url: http://packagecontrol.io/Package%20Control.sublime-package
+        sha256: 817937144c34c84c88cd43b85318b2656f9c3fac02f8f72cbc18360b2c26d139
+        size: 471460
+      - type: file
+        path: com.sublimetext.four.desktop
+      - type: file
+        path: com.sublimetext.four.appdata.xml
+      - type: file
+        path: com.sublimetext.four-32.png
+      - type: file
+        path: com.sublimetext.four-48.png
+      - type: file
+        path: com.sublimetext.four-64.png
+      - type: file
+        path: com.sublimetext.four-128.png
+      - type: file
+        path: com.sublimetext.four-256.png
+    build-commands:
+      - mkdir -p /app/bin
+      - mkdir -p /app/lib
+      - install apply_extra /app/bin
+      - install subl /app/bin/subl
+      - install -Dm644 com.sublimetext.four.desktop /app/share/applications/com.sublimetext.four.desktop
+      - install -Dm644 com.sublimetext.four.appdata.xml /app/share/appdata/com.sublimetext.four.appdata.xml
+      - install -Dm644 com.sublimetext.four-32.png /app/share/icons/hicolor/32x32/apps/com.sublimetext.four.png
+      - install -Dm644 com.sublimetext.four-48.png /app/share/icons/hicolor/48x48/apps/com.sublimetext.four.png
+      - install -Dm644 com.sublimetext.four-64.png /app/share/icons/hicolor/64x64/apps/com.sublimetext.four.png
+      - install -Dm644 com.sublimetext.four-128.png /app/share/icons/hicolor/128x128/apps/com.sublimetext.four.png
+      - install -Dm644 com.sublimetext.four-256.png /app/share/icons/hicolor/256x256/apps/com.sublimetext.four.png
